@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import "./App.css";
+import axios from "axios";
+import { TodoistApi } from '@doist/todoist-api-typescript'
 
+const api = new TodoistApi('0d2bd7a9e293bc03215a944b181617502eddadf6')
 /* Нужно исправить добавление, начинает добавляться со 2 элемента
 после перезагрузки */
 
@@ -47,20 +50,16 @@ const toDoItems = [
 // useState crash => https://blog.logrocket.com/a-guide-to-usestate-in-react-ecb9952e406c/
 function App() {
 
-  const extractStorage = () => {
-      if (!localStorage.getItem('myitems')) {
-          localStorage.setItem('myitems', JSON.stringify(toDoItems))
-      } 
-      return JSON.parse(localStorage.getItem('myitems'))
-      
-  }
-  // extractStorage()
   const [itemToAdd, setItemToAdd] = useState("");
   //arrow declaration => expensive computation ex: API calls
-  const [items, setItems] = useState(() => extractStorage());
+  const [items, setItems] = useState([]);
 
-  // const [items, getItem] = useState(())
-
+  useEffect(() => {
+    api.getTasks()
+    .then(tasks => setItems(tasks))
+  }, [])
+  console.log(items)
+  
   const [searchField, setSearchField] = useState("")
 
   const [filterType, setFilterType] = useState("");
@@ -70,19 +69,16 @@ function App() {
   };
 
   const handleAddItem = () => {
-    // mutating !WRONG!
-    // const oldItems = items;
-    // oldItems.push({ label: itemToAdd, key: uuidv4() });
-    // setItems(oldItems);
+    api.addTask({ content: itemToAdd, projectId: 2203306141 })
+    .then((task) => setItems([task, ...items]))
+    .catch((error) => error)
 
-    // not mutating !CORRECT!
-    const tempItems = [
-      { label: itemToAdd, key: uuidv4() },
-      ...items,
-    ]
-    setItems([...tempItems]);
+    // const tempItems = [
+    //   { label: itemToAdd, key: uuidv4() },
+    //   ...items,
+    // ]
+    // setItems([...tempItems]);
     setItemToAdd("");
-    localStorage.setItem("myitems", JSON.stringify([...tempItems]))
   };
 
   const handleRemoveItem = (key) => {
@@ -91,16 +87,27 @@ function App() {
       localStorage.setItem("myitems", JSON.stringify(newData))
   }
       
-  const handleItemDone = ({ key }) => {
+  const handleItemDone = ({ id }) => {
+    
+
     const tempItems = items.map((item) => {
-      if (item.key === key) {
-        return {...item, done: !item.done };
+      if (item.id === id) {
+        if (!item.completed) {
+          api.closeTask(id)
+          .then((isSuccess) => console.log(isSuccess))
+          .catch((error) => console.log(error))
+        } else {
+          api.reopenTask(id)
+          .then((isSuccess) => console.log(isSuccess))
+          .catch((error) => console.log(error))
+          console.log(items)
+        }
+        return {...item, completed: !item.completed };
     } else 
       return item;
     })
     //second way updated
     setItems([...tempItems])
-    localStorage.setItem('myitems',JSON.stringify([...tempItems]))
 
   };
 
@@ -123,17 +130,17 @@ function App() {
     setFilterType(type);
   };
 
-  // const filterSearch = () => {
-  //     filteredItems.filter(item => item.label.toLowerCase().includes(searchField.toLowerCase()))
-  // }
+  const filterSearch = () => {
+      filteredItems.filter(item => item.content.toLowerCase().includes(searchField.toLowerCase()))
+  }
 
   const handleChange = (event) => {
       setSearchField(event.target.value)
     }
 
-  const searchItems = items.filter(item => item.label.toLowerCase().includes(searchField.toLowerCase()))
+  const searchItems = items.filter(item => item.content.toLowerCase().includes(searchField.toLowerCase()))
   
-  const amountDone = items.filter((item) => item.done).length;
+  const amountDone = items.filter((item) => item.completed).length;
 
   const amountLeft = items.length - amountDone;
 
@@ -141,8 +148,8 @@ function App() {
       (!filterType || filterType === "all"
       ? searchItems
       : filterType === "active"
-      ? searchItems.filter((item) => !item.done)
-      : searchItems.filter((item) => item.done))
+      ? searchItems.filter((item) => !item.completed)
+      : searchItems.filter((item) => item.completed))
 
 
   return (
@@ -184,13 +191,13 @@ function App() {
       <ul className="list-group todo-list">
         {filteredItems.length > 0 &&
           filteredItems.map((item) => (
-            <li key={item.key} className="list-group-item">
-              <span className={`todo-list-item${item.done ? " done" : ""}${item.important ? " important" : ""}`}>
+            <li key={item.id} className="list-group-item">
+              <span className={`todo-list-item${item.completed ? " done" : ""}`}>
                 <span
                   className="todo-list-item-label"
                   onClick={() => handleItemDone(item)}
                 >
-                  {item.label}
+                  {item.content}
                 </span>
 
                 <button
