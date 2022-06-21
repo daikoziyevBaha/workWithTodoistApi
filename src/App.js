@@ -58,7 +58,6 @@ function App() {
     api.getTasks()
     .then(tasks => setItems(tasks))
   }, [])
-  console.log(items)
   
   const [searchField, setSearchField] = useState("")
 
@@ -81,25 +80,26 @@ function App() {
     setItemToAdd("");
   };
 
-  const handleRemoveItem = (key) => {
-      let newData = items.filter((item) => item.key !== key)
+  const handleRemoveItem = ({id}) => {
+      api.deleteTask(id)
+      .then((isSuccess) => isSuccess)
+      .catch((error) => error)
+
+      let newData = items.filter((item) => item.id !== id)
       setItems(newData)
-      localStorage.setItem("myitems", JSON.stringify(newData))
   }
       
   const handleItemDone = ({ id }) => {
-    
-
     const tempItems = items.map((item) => {
       if (item.id === id) {
         if (!item.completed) {
           api.closeTask(id)
-          .then((isSuccess) => console.log(isSuccess))
-          .catch((error) => console.log(error))
+          .then((isSuccess) => isSuccess)
+          .catch((error) => error)
         } else {
           api.reopenTask(id)
-          .then((isSuccess) => console.log(isSuccess))
-          .catch((error) => console.log(error))
+          .then((isSuccess) => isSuccess)
+          .catch((error) => error)
           console.log(items)
         }
         return {...item, completed: !item.completed };
@@ -111,20 +111,20 @@ function App() {
 
   };
 
-  const handleItemImportant = ({ key }) => {
+  // const handleItemImportant = ({ key }) => {
 
       
-    const tempItems = items.map((item)=>{
-      if (item.key === key) {
-          return {...item, important: !item.important };
-      } else 
-        return item;
+  //   const tempItems = items.map((item)=>{
+  //     if (item.key === key) {
+  //         return {...item, important: !item.important };
+  //     } else 
+  //       return item;
         
-    })
-      setItems([...tempItems])
-      localStorage.setItem('myitems',JSON.stringify([...tempItems]))
+  //   })
+  //     setItems([...tempItems])
+  //     localStorage.setItem('myitems',JSON.stringify([...tempItems]))
 
-  }
+  // }
 
   const handleFilterItems = (type) => {
     setFilterType(type);
@@ -200,18 +200,11 @@ function App() {
                   {item.content}
                 </span>
 
-                <button
-                  type="button"
-                  className="btn btn-outline-success btn-sm float-right"
-                  onClick={() => handleItemImportant(item)}
-                >
-                  <i className="fa fa-exclamation" />
-                </button>
 
                 <button
                   type="button"
                   className="btn btn-outline-danger btn-sm float-right"
-                  onClick={() => handleRemoveItem(item.key)}
+                  onClick={() => handleRemoveItem(item)}
                 >
                   <i className="fa fa-trash-o" />
                 </button>
